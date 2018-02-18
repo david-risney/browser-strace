@@ -1,34 +1,40 @@
 Definitions = pN:(cw ExtendedAttributeList cw Definition)* cw {
-    return pN.map(entry => ({ attrs: entry[1], def: entry[3] }));
+    return pN.map(entry => { 
+        let result = entry[3];
+        result.attrs = entry[1];
+        return result;
+    });
 }
 
 Definition = Callback / Partial / Interface / Dictionary / Enum / Typedef / ImplementsStatement
 
 Callback = "callback" cwr (CallbackRest / Interface)
 
-Interface = kind:"interface" cwr name:identifier cwr Inheritance? cw "{" members:InterfaceMembers cw "}" cw ";" {
+Interface = kind:"interface" cwr ("mixin" cwr)? name:identifier cwr Inheritance? cw "{" members:InterfaceMembers cw "}" cw ";" {
     return {kind, name, members};
 }
 
-Partial = "partial" cwr (PartialInterface / PartialDictionary)
+Partial = "partial" cwr interfaceOrDict:(PartialInterface / PartialDictionary) { return interfaceOrDict; }
 
 PartialInterface = kind:"interface" cwr name:identifier cwr "{" members:InterfaceMembers cw "}" cw ";" {
     return {kind, name, members};
 }
 
 InterfaceMembers = pN:(cw ExtendedAttributeList cw InterfaceMember)* {
-    return pN.map(entry => ({ attrs: entry[1], member: entry[3] }));
+    return pN.map(entry => { 
+        let result = entry[3]; 
+        result.attrs = entry[1]; 
+        return result; 
+    });
 }
 
-InterfaceMember = Const / Operation / Serializer / Stringifier / StaticMember / Iterable / ReadOnlyMember / ReadWriteAttribute 
+InterfaceMember = Const / Operation / SpecialOperation / Serializer / Stringifier / StaticMember / Iterable / ReadOnlyMember / ReadWriteAttribute 
 
-Dictionary = "dictionary" cwr identifier cwr Inheritance? cw "{" cw DictionaryMembers? cw "}" cw ";"
+Dictionary = "dictionary" cwr identifier cw Inheritance? cw "{" cw DictionaryMembers cw "}" cw ";"
 
-DictionaryMembers = ExtendedAttributeList cw DictionaryMember cw DictionaryMembers 
+DictionaryMembers = (cw ExtendedAttributeList cw DictionaryMember)*
 
-DictionaryMember = Required? cw Type cwr identifier cwr Default? cw ";"
-
-Required = "required";
+DictionaryMember = ("required" cwr)? Type cw identifier (cwr Default)? cw ";"
 
 PartialDictionary = "dictionary" cwr identifier cwr "{" cw DictionaryMembers cw "}" cw ";"
 
@@ -48,7 +54,7 @@ Typedef = "typedef" cwr Type cwr identifier cw ";"
 
 ImplementsStatement = identifier cw ("implements"/"includes") cwr identifier cw ";"
 
-Const = "const" cwr ConstType cw identifier cw "=" cw ConstValue cw ";"
+Const = kind:"const" cwr type:ConstType cw name:identifier cw "=" cw value:ConstValue cw ";" { return { kind, type, name, value }; }
 
 ConstValue = BooleanLiteral / FloatLiteral / integer / "null"
 
@@ -68,41 +74,37 @@ SerializationPatternList = "getter" / identifier cwr (cw "," cw identifier)*
 
 Stringifier = "stringifier" cwr StringifierRest
 
-StringifierRest = ReadOnly cw AttributeRest / ReturnType cw OperationRest / ";"
+StringifierRest = ReadOnly cw AttributeRest / Operation / ";"
 
-StaticMember = "static" cwr StaticMemberRest
+StaticMember = "static" cwr member:StaticMemberRest { return member; }
 
-StaticMemberRest = ReadOnly cw AttributeRest / ReturnType cw OperationRest
+StaticMemberRest = ReadOnly cw member:AttributeRest / operation:Operation { return member || operation; }
 
-ReadOnlyMember = "readonly" cwr ReadOnlyMemberRest
+ReadOnlyMember = "readonly" cwr member:ReadOnlyMemberRest { return member; }
 
 ReadOnlyMemberRest = AttributeRest 
 
-ReadWriteAttribute = "inherit" cwr ReadOnly cw AttributeRest / AttributeRest
+ReadWriteAttribute = "inherit" cwr ReadOnly cw attr:AttributeRest / attr:AttributeRest { return attr; }
 
-AttributeRest = "attribute" cwr Type cw AttributeName cw ";"
+AttributeRest = kind:"attribute" cwr type:Type cw name:AttributeName cw ";" { return { kind, type, name }; }
 
-AttributeName = AttributeNameKeyword / identifier
-
-AttributeNameKeyword = "required"
+AttributeName = identifier
 
 Inherit = "inherit"?
 
 ReadOnly = "readonly"?
 
-Operation = ReturnType cw OperationRest / SpecialOperation
+Operation = returnType:ReturnType cw rest:OperationRest { return { kind: "operation", returnType, name: rest.name, args: rest.args || [] }; }
 
-SpecialOperation = Special cw Specials cw ReturnType cw OperationRest
+SpecialOperation = Special cw Specials cw operation:Operation { return operation; }
 
 Specials = (cw Special cw)*
 
 Special = "getter"  / "setter"  / "deleter"  / "legacycaller"
 
-OperationRest = OptionalIdentifier cw "(" cw ArgumentList cw ")" cw ";"
+OperationRest = name:identifier? cw "(" cw args:ArgumentList? cw ")" cw ";" { return { name, args }; }
 
-OptionalIdentifier = identifier?
-
-ArgumentList = Argument (cw "," cw Argument)*
+ArgumentList = arg1:Argument argN:(cw "," cw Argument)* { return [arg1].concat(argN.map(entry => entry[3])); }
 
 Argument = ExtendedAttributeList cw OptionalOrRequiredArgument
 
@@ -167,7 +169,7 @@ ReturnType = Type / "void"
 
 IdentifierList = identifier (cw "," cw identifier)*
 
-ExtendedAttribute = ExtendedAttributeFancyExtras / ExtendedAttributeArgList / ExtendedAttributeNoArgs
+ExtendedAttribute = ExtendedAttributeIdentList / ExtendedAttributeFancyExtras / ExtendedAttributeArgList / ExtendedAttributeNoArgs
 ExtendedAttributeNoArgs = identifier
 ExtendedAttributeArgList = p1:identifier cw "(" cw p2:ArgumentList cw ")" { return p1 + "(" + p2 + ")"; }
 ExtendedAttributeIdent = p1:identifier cw "=" cw p2:identifier { return p1 + "=" + p2; }
