@@ -10,13 +10,17 @@ Definition = Callback / Partial / Interface / Dictionary / Enum / Typedef / Impl
 
 Callback = "callback" cwr (CallbackRest / Interface)
 
-Interface = kind:"interface" cwr ("mixin" cwr)? name:identifier cwr Inheritance? cw "{" members:InterfaceMembers cw "}" cw ";" {
+Interface = kind:"interface" cwr ("mixin" cw)? name:identifier cw Inheritance? cw "{" cw members:InterfaceMembers cw "}" cw ";" {
     return {kind, name, members};
 }
 
 Partial = "partial" cwr interfaceOrDict:(PartialInterface / PartialDictionary) { return interfaceOrDict; }
 
-PartialInterface = kind:"interface" cwr name:identifier cwr "{" members:InterfaceMembers cw "}" cw ";" {
+PartialInterface = kind:"interface" cwr ("mixin" cw)? name:identifier membersContainer:(cw "{" InterfaceMembers cw "}")? cw ";" {
+    let members = [];
+    if (membersContainer) {
+        members = membersContainer[2];
+    }
     return {kind, name, members};
 }
 
@@ -34,11 +38,11 @@ Dictionary = "dictionary" cwr identifier cw Inheritance? cw "{" cw DictionaryMem
 
 DictionaryMembers = (cw ExtendedAttributeList cw DictionaryMember)*
 
-DictionaryMember = ("required" cwr)? Type cw identifier (cwr Default)? cw ";"
+DictionaryMember = ("required" cwr)? Type cw identifier (cw Default)? cw ";"
 
 PartialDictionary = "dictionary" cwr identifier cwr "{" cw DictionaryMembers cw "}" cw ";"
 
-Default = "=" cw DefaultValue;
+Default = "=" cw DefaultValue
 
 DefaultValue = ConstValue / string / "[" cw "]"
 
@@ -48,41 +52,39 @@ Enum = "enum" cwr identifier cw "{" cw EnumValueList cw "}" cw ";"
 
 EnumValueList = string (cw "," cw string)*
 
-CallbackRest = identifier cw "=" cw ReturnType cw "(" cw ArgumentList cw ")" cw ";"
+CallbackRest = identifier cw "=" cw ReturnType cw (identifier cw)? "(" cw ArgumentList? cw ")" cw ";"
 
-Typedef = "typedef" cwr Type cwr identifier cw ";"
+Typedef = "typedef" cw Type cw identifier cw ";"
 
 ImplementsStatement = identifier cw ("implements"/"includes") cwr identifier cw ";"
 
 Const = kind:"const" cwr type:ConstType cw name:identifier cw "=" cw value:ConstValue cw ";" { return { kind, type, name, value }; }
 
-ConstValue = BooleanLiteral / FloatLiteral / integer / "null"
+ConstValue = BooleanLiteral / FloatLiteral / integer / string / "null"
 
-BooleanLiteral = "true" / "false"
+BooleanLiteral = "true" / "false" / "VARIANT_TRUE" / "VARIANT_FALSE"
 
 FloatLiteral = float / "-Infinity" / "Infinity" / "NaN"
 
-Serializer = "serializer" cwr SerializerRest
+Serializer = "serializer" cw SerializerRest
 
 SerializerRest = OperationRest / "=" cw SerializationPattern cw ";" / ";"
 
 SerializationPattern = "{" cw SerializationPatternMap? cw "}" / "[" cw SerializationPatternList? cw "]" / identifier
 
-SerializationPatternMap = "getter" / "inherit" cwr ( cw "," cw identifier)* / identifier cwr ( cw "," cw identifier)*
+SerializationPatternMap = "getter" / "inherit" ( cw "," cw identifier)* / identifier ( cw "," cw identifier)*
 
-SerializationPatternList = "getter" / identifier cwr (cw "," cw identifier)*
+SerializationPatternList = "getter" / identifier (cw "," cw identifier)*
 
-Stringifier = "stringifier" cwr StringifierRest
+Stringifier = "stringifier" cw StringifierRest
 
 StringifierRest = ReadOnly cw AttributeRest / Operation / ";"
 
 StaticMember = "static" cwr member:StaticMemberRest { return member; }
 
-StaticMemberRest = ReadOnly cw member:AttributeRest / operation:Operation { return member || operation; }
+StaticMemberRest = ReadOnly cw result:AttributeRest / result:Operation { return result; }
 
-ReadOnlyMember = "readonly" cwr member:ReadOnlyMemberRest { return member; }
-
-ReadOnlyMemberRest = AttributeRest 
+ReadOnlyMember = "readonly" cwr member:AttributeRest { return member; }
 
 ReadWriteAttribute = "inherit" cwr ReadOnly cw attr:AttributeRest / attr:AttributeRest { return attr; }
 
@@ -108,15 +110,15 @@ ArgumentList = arg1:Argument argN:(cw "," cw Argument)* { return [arg1].concat(a
 
 Argument = ExtendedAttributeList cw OptionalOrRequiredArgument
 
-OptionalOrRequiredArgument = "optional" cwr Type cw ArgumentName cw Default / Type cw Ellipsis cw ArgumentName
+OptionalOrRequiredArgument = "optional" cwr Type cw ArgumentName (cw Default)? / Type cw Ellipsis cw ArgumentName (cw Default)?
 
-ArgumentName = ArgumentNameKeyword / identifier
+ArgumentName = identifier / ArgumentNameKeyword
 
 Ellipsis = "..."?
 
 Iterable = "iterable" cw "<" cw Type cw ("," cw Type cw)? ">" cw ";"
 
-ExtendedAttributeList = entries:("[" cw ExtendedAttribute (cw "," cw ExtendedAttribute)* cw "]")? {
+ExtendedAttributeList = entries:("[" cw ExtendedAttribute (cw ("," / "]" cw "[") cw ExtendedAttribute)* cw "]")? {
     let arr = [];
     if (entries) {
         if (entries[2]) {
@@ -129,7 +131,7 @@ ExtendedAttributeList = entries:("[" cw ExtendedAttribute (cw "," cw ExtendedAtt
     return arr;
 }
 
-Other = integer  / float  / identifier  / string  / other  / "-"  / "-Infinity"  / "."  / "..."  / ":"  / ";"  / "<"  / "="  / ">"  / "?"  / "ByteString"  / "DOMString"  / "Infinity"  / "NaN"  / "USVString"  / "any"  / "boolean"  / "byte"  / "double"  / "false"  / "float"  / "long"  / "null"  / "object"  / "octet"  / "or"  / "optional"  / "sequence"  / "short"  / "true"  / "unsigned"  / "void"  / ArgumentNameKeyword  / BufferRelatedType 
+Other = integer  / float  / identifier  / string  / other  / "-"  / "-Infinity"  / "."  / "..."  / ":"  / ";"  / "<"  / "="  / ">"  / "?"  / "ByteString"  / "DOMString"  / "Infinity"  / "NaN"  / "USVString"  / "any"  / "boolean"  / "byte"  / "double"  / "false"  / "VARIANT_FALSE" / "float"  / "long"  / "null"  / "object"  / "octet"  / "or"  / "optional"  / "sequence"  / "short"  / "true" / "VARIANT_TRUE" / "unsigned"  / "void"  / ArgumentNameKeyword  / BufferRelatedType 
 
 ArgumentNameKeyword = "attribute"  / "callback"  / "const"  / "deleter"  / "dictionary"  / "enum"  / "getter"  / "implements"  / "inherit"  / "interface"  / "iterable"  / "legacycaller"  / "partial"  / "required"  / "serializer"  / "setter"  / "static"  / "stringifier"  / "typedef"  / "unrestricted"
 
@@ -143,7 +145,7 @@ UnionMemberType = NonAnyType / UnionType cw Null
 
 UnionMemberTypes = ("or" cw UnionMemberType cw UnionMemberTypes)?
 
-NonAnyType = PrimitiveType cw Null  / PromiseType cw Null  / "ByteString" cw Null  / "DOMString" cw Null  / "USVString" cw Null  / identifier cw Null  / "sequence" cw "<" cw Type cw ">" cw Null  / "object" cw Null  / "Error" cw Null  / "DOMException" cw Null  / BufferRelatedType cw Null 
+NonAnyType =  ("FrozenArray" / "sequence" / "record") cw "<" cw Type (cw "," cw Type)* cw ">" cw Null / PrimitiveType cw Null  / PromiseType cw Null  / identifier cw Null  / "ByteString" cw Null  / "DOMString" cw Null  / "USVString" cw Null  / "object" cw Null  / "Error" cw Null  / "DOMException" cw Null  / BufferRelatedType cw Null 
 
 BufferRelatedType = "ArrayBuffer"  / "DataView"  / "Int8Array"  / "Int16Array"  / "Int32Array"  / "Uint8Array"  / "Uint16Array"  / "Uint32Array"  / "Uint8ClampedArray"  / "Float32Array"  / "Float64Array"
 
@@ -169,22 +171,25 @@ ReturnType = Type / "void"
 
 IdentifierList = identifier (cw "," cw identifier)*
 
-ExtendedAttribute = ExtendedAttributeIdentList / ExtendedAttributeFancyExtras / ExtendedAttributeArgList / ExtendedAttributeNoArgs
+ExtendedAttribute = ExtendedAttributeExpr
+ExtendedAttributeExpr = ("[" ExtendedAttributeExpr? "]" / [^,\]])+
+
+ExtendedAttributeForActualParsing = ExtendedAttributeArgList / ExtendedAttributeIdentList / ExtendedAttributeFancyExtras / ExtendedAttributeIdent / ExtendedAttributeNoArgs
 ExtendedAttributeNoArgs = identifier
-ExtendedAttributeArgList = p1:identifier cw "(" cw p2:ArgumentList cw ")" { return p1 + "(" + p2 + ")"; }
-ExtendedAttributeIdent = p1:identifier cw "=" cw p2:identifier { return p1 + "=" + p2; }
+ExtendedAttributeArgList = p1:identifier cw "(" cw p2:(ArgumentList)? cw ")" { return p1 + "(" + p2 + ")"; }
+ExtendedAttributeIdent = p1:identifier cw "=" cw p2:(identifier / DefaultValue) { return p1 + "=" + p2; }
 ExtendedAttributeIdentList = p1:identifier cw "=" cw "(" cw pN:IdentifierList cw ")" { return p1 + "=(" + pN + ")"; }
 ExtendedAttributeNamedArgList = p1:identifier cw "=" cw p2:identifier cw "(" cw pN:ArgumentList cw ")" { return p1 + "=" + p2 + "(" + pN + ")"; }
-ExtendedAttributeFancyExtras =  p1:identifier cw "=" cw pN:( identifier / [()|\":] / whitespace / comment )+ { return p1 + "=" + pN.join(""); }
+ExtendedAttributeFancyExtras =  p1:identifier cw "=" cw pN:(string / identifier / [()|\":] / whitespace / comment)+ { return p1 + "=" + pN.join(""); }
 
 octdigit = [0-7]
 decdigit = [0-9]
 hexdigit = [0-9a-zA-Z]
 
-integer = "-"? (decinteger / hexinteger / octinteger)
+integer = "-"? (hexinteger / octinteger / decinteger)
 
 decinteger = decdigit+
-hexinteger = "0" [Xx] hexdigit+
+hexinteger = "0" [xX] hexdigit+
 octinteger = "0" octdigit
 
 float = "-"? (((decdigit+ "." decdigit* / decdigit* "." decdigit+) ([Ee] [+-]? decdigit+)?)/(decdigit+[Ee][+-]?decdigit+))
@@ -199,6 +204,6 @@ cwr = cwi+ { return; }
 
 whitespace = [\t\n\r ]+
 
-comment = "\/\/" [^\n]* / "\/\*" ("."/"\n")* "\*\/"
+comment = "//" [^\n]* / "/*" (!"*/" .)* "*/"
 
 other = [^\t\n\r 0-9A-Za-z]
