@@ -102,14 +102,31 @@
         }
     }
 
-    function logStart(options) { console.log("start", options); }
+    function logStart(options) { 
+        console.log(options.instanceContext + " " + options.callIndex);
+    }
 
-    function logEnd(options) { console.log("end", options); }
+    function logEnd(options) { }
 
-    function logAsyncStart(options) { console.log("asyncStart", options); }
+    function logAsyncStart(options) { 
+        console.log(options.instanceContext + " callback " + options.callIndex);
+    }
 
-    function logAsyncEnd(options) { console.log("asyncEnd", options); }
+    function logAsyncEnd(options) { }
 
-    shimProperty(window, "setTimeout", logStart, logEnd, logAsyncStart, logAsyncEnd, "window.setTimeout");
-    shimProperty(window, "innerWidth", logStart, logEnd, logAsyncStart, logAsyncEnd, "window.setTimeout");
+    const apiList = {0};
+
+    apiList.forEach(api => {
+        const parts = api.split(".");
+        const obj = window[parts[0]];
+        if (obj.hasOwnProperty(parts[1])) {
+            shimProperty(obj, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
+        }
+        else if (obj.prototype.hasOwnProperty(parts[1])) {
+            shimProperty(obj.prototype, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
+        }
+        else {
+            console.error("Unable to find property " + api);
+        }
+    })
 })();

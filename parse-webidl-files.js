@@ -25,7 +25,7 @@ optionArgs.forEach(option => {
 });
 
 if (!onlyErrors && !debug) {
-    console.log('const apis = [');
+    console.log('[');
 }
 fileArgs.forEach(parseFileOrDirectory);
 if (!onlyErrors && !debug) {
