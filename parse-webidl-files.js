@@ -8,17 +8,29 @@ const fileArgs = args.filter(arg => !arg.startsWith("-"));
 const optionArgs = args.filter(arg => arg.startsWith("-"));
 
 let debug = false;
+let onlyErrors = false;
+
 optionArgs.forEach(option => {
     if (option === "-debug" || option === "--debug") {
         debug = true;
         console.log("Debugging mode");
+    }
+    else if (option === "-onlyErrors" || option === "--onlyErrors") {
+        onlyErrors = true;
+        console.log("Showing only errors");
     }
     else {
         throw new Error("Unknown option " + option);
     }
 });
 
+if (!onlyErrors && !debug) {
+    console.log('const apis = [');
+}
 fileArgs.forEach(parseFileOrDirectory);
+if (!onlyErrors && !debug) {
+    console.log('];');
+}
 
 function parseFileOrDirectory(fileOrDirectory) {
     const stats = fs.statSync(fileOrDirectory);
@@ -43,42 +55,50 @@ function parseFile(file) {
     try {
         const parsed = webidl.parse(fileContents);
         parsed.forEach(entry => {
-            if (debug) {
-                console.log(entry);
-                if (entry.members) {
-                    entry.members.forEach(member => {
-                        console.log(member);
-                    });
+            if (!onlyErrors) {
+                if (debug) {
+                    console.log(entry);
+                    if (entry.members) {
+                        entry.members.forEach(member => {
+                            console.log(member);
+                        });
+                    }
                 }
-            }
-            else {
-                if (entry.kind === "interface") {
-                    (entry.members || []).forEach(member => {
-                        console.log(entry.name + "." + member.name);
-                    });
+                else {
+                    if (entry.kind === "interface") {
+                        (entry.members || []).forEach(member => {
+                            console.log('    "' + entry.name + "." + member.name + '"',);
+                        });
+                    }
                 }
             }
         });
     }
     catch (error) {
-        console.log("Error parsing " + file + " (" + error.location.start.line + ":" + error.location.start.column + " - " + error.location.end.line + ":" + error.location.end.column + "): " + error.message);
-        console.log();
-        if (error.location.start.line === error.location.end.line) {
-            console.log(fileContents.split("\n")[error.location.start.line - 1]);
-            let space = "";
-            for (let idx = 0; idx < error.location.start.column - 1; ++idx) {
-                space += " ";
+        if (error.location) {
+            console.error("Error parsing " + file + " (" + error.location.start.line + ":" + error.location.start.column + " - " + error.location.end.line + ":" + error.location.end.column + "): " + error.message);
+            console.error();
+            if (error.location.start.line === error.location.end.line) {
+                console.error(fileContents.split("\n")[error.location.start.line - 1]);
+                let space = "";
+                for (let idx = 0; idx < error.location.start.column - 1; ++idx) {
+                    space += " ";
+                }
+                for (let idx = 0; idx < error.location.end.column - error.location.start.column; ++idx) {
+                    space += "^";
+                }
+                console.error(space);
             }
-            for (let idx = 0; idx < error.location.end.column - error.location.start.column; ++idx) {
-                space += "^";
+            else {
+                const lines = fileContents.split("\n");
+                for (let line = error.location.start.line; line <= error.location.end.line; ++line) {
+                    console.error(lines[line - 1]);
+                }
             }
-            console.log(space);
         }
         else {
-            const lines = fileContents.split("\n");
-            for (let line = error.location.start.line; line <= error.location.end.line; ++line) {
-                console.log(lines[line - 1]);
-            }
+            console.error("Error parsing file " + file + ": " + error);
+            console.error(error);
         }
     }
 }
