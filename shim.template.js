@@ -47,7 +47,7 @@
                     }
                     catch (error) {
                         end({ propertyName, callIndex, type: "get", error, instanceContext, startContext });
-                        throw err;
+                        throw error;
                     }
                     end({ propertyName, callIndex, type: "get", instanceContext, startContext });
                     return result;
@@ -96,37 +96,55 @@
             try {
                 Object.defineProperty(object, propertyName, newDescriptor);
             }
-            catch (err) {
-                console.error("Unable to defineProperty " + propertyName, instanceContext, err);
+            catch (error) {
+                console.error("Unable to defineProperty " + propertyName, instanceContext, error);
             }
         }
     }
 
-    function logStart(options) { 
+    function shimStart(options) { 
         console.log(options.instanceContext + " " + options.callIndex);
     }
 
-    function logEnd(options) { }
+    function shimEnd(options) { }
 
-    function logAsyncStart(options) { 
+    function shimAsyncStart(options) { 
         console.log(options.instanceContext + " callback " + options.callIndex);
     }
 
-    function logAsyncEnd(options) { }
+    function shimAsyncEnd(options) { }
 
-    const apiList = {0};
+    const apiList = 
+%APILIST%
 
     apiList.forEach(api => {
         const parts = api.split(".");
-        const obj = window[parts[0]];
-        if (obj.hasOwnProperty(parts[1])) {
-            shimProperty(obj, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
+        let obj = null;
+        switch (parts[0]) {
+            case "Window":
+                obj = window;
+                break;
+            case "Document":
+                obj = document;
+                break;
+            default:
+                obj = window[parts[0]] || window[parts[0].toLowerCase()];
+                break;
         }
-        else if (obj.prototype.hasOwnProperty(parts[1])) {
-            shimProperty(obj.prototype, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
+        
+        if (obj) {
+            if (obj.hasOwnProperty(parts[1])) {
+                shimProperty(obj, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
+            }
+            else if (obj.prototype && obj.prototype.hasOwnProperty(parts[1])) {
+                shimProperty(obj.prototype, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
+            }
+            else {
+                console.error("Unable to find property " + api);
+            }
         }
         else {
-            console.error("Unable to find property " + api);
+            console.error("Unable to find object " + api);
         }
     })
 })();

@@ -67,7 +67,7 @@ function parseFile(file) {
                 else {
                     if (entry.kind === "interface") {
                         (entry.members || []).forEach(member => {
-                            console.log('    "' + entry.name + "." + member.name + '"',);
+                            console.log('    "' + entry.name + "." + member.name + '",',);
                         });
                     }
                 }
