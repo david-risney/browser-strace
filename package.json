@@ -4,7 +4,6 @@
   "description": "Logging DOM calls in and DOM callbacks out in the browser - like strace but for the browser.",
   "main": "shim.js",
   "scripts": {
-    "test": "node shim.js"
   },
   "repository": {
     "type": "git",
