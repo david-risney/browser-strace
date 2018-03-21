@@ -1,0 +1,21 @@
+{
+  "description": "BrowserStrace",
+  "manifest_version": 2,
+  "name": "Browser Strace",
+  "version": "1.0",
+  "author": "davris",
+  "homepage_url": "https://aka.ms/BrowserStrace",
+  "icons": {
+    "48": "icons/border-48.png"
+  },
+  "content_scripts": [ {
+    "matches": ["*://*/*"],
+    "js": ["injectscript.js"],
+    "run_at": "document_start",
+    "all_frames": true
+  } ],
+  "web_accessible_resources": [
+    "shim.js"
+  ],
+  "permissions": []
+}

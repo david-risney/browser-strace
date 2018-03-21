@@ -10,18 +10,18 @@ Definition = Callback / Partial / Interface / Dictionary / Enum / Typedef / Impl
 
 Callback = "callback" cwr (CallbackRest / Interface)
 
-Interface = kind:"interface" cwr ("mixin" cw)? name:identifier cw Inheritance? cw "{" cw members:InterfaceMembers cw "}" cw ";" {
-    return {kind, name, members};
+Interface = kind:"interface" cwr mixin:("mixin" cw)? name:identifier cw Inheritance? cw "{" cw members:InterfaceMembers cw "}" cw ";" {
+    return {kind, name, members, mixin};
 }
 
 Partial = "partial" cwr interfaceOrDict:(PartialInterface / PartialDictionary) { return interfaceOrDict; }
 
-PartialInterface = kind:"interface" cwr ("mixin" cw)? name:identifier membersContainer:(cw "{" InterfaceMembers cw "}")? cw ";" {
+PartialInterface = kind:"interface" cwr mixin:("mixin" cw)? name:identifier membersContainer:(cw "{" InterfaceMembers cw "}")? cw ";" {
     let members = [];
     if (membersContainer) {
         members = membersContainer[2];
     }
-    return {kind, name, members};
+    return {kind, name, members, mixin};
 }
 
 InterfaceMembers = pN:(cw ExtendedAttributeList cw InterfaceMember)* {
@@ -56,7 +56,9 @@ CallbackRest = identifier cw "=" cw ReturnType cw (identifier cw)? "(" cw Argume
 
 Typedef = "typedef" cw Type cw identifier cw ";"
 
-ImplementsStatement = identifier cw ("implements"/"includes") cwr identifier cw ";"
+ImplementsStatement = derived:identifier cw ("implements"/"includes") cwr base:identifier cw ";" {
+    return {kind: "includes", derived, base};
+}
 
 Const = kind:"const" cwr type:ConstType cw name:identifier cw "=" cw value:ConstValue cw ";" { return { kind, type, name, value }; }
 

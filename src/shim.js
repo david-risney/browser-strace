@@ -102,14 +102,17 @@
         }
     }
 
+    const consoleLog = console.log.bind(console);
+    const consoleError = console.error.bind(console);
+
     function shimStart(options) { 
-        console.log(options.instanceContext + " " + options.callIndex);
+        consoleLog(options.instanceContext + " " + options.callIndex);
     }
 
     function shimEnd(options) { }
 
     function shimAsyncStart(options) { 
-        console.log(options.instanceContext + " callback " + options.callIndex);
+        consoleLog(options.instanceContext + " callback " + options.callIndex);
     }
 
     function shimAsyncEnd(options) { }
@@ -5063,11 +5066,11 @@
                 shimProperty(obj.prototype, parts[1], shimStart, shimEnd, shimAsyncStart, shimAsyncEnd, api);
             }
             else {
-                console.error("Unable to find property " + api);
+                consoleError("Unable to find property " + api);
             }
         }
         else {
-            console.error("Unable to find object " + api);
+            consoleError("Unable to find object " + api);
         }
     })
 })();
